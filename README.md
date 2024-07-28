@@ -22,16 +22,17 @@ script. A preview of the reference image is needed:
 
 
 ## Installation
-Nothing to do, the only needed binary will be compiled on the fly during the first
-call to one of the python scripts.
+Install with pip the dependencies listed below.
 
-## Known dependencies
-* python 2.7 or 2.6
+#### Known dependencies
+* python >= 3.8
 * numpy
+* pyproj >= 3.0.0 
+* rasterio[s3] >= 1.2a1
+* rpcm >= 1.4.6
+* srtm4 >= 1.1.2
 * pyopengl
-* gdal
-* g++
-* libtiff
+* PIL
 
 On Ubuntu 13.10, all the needed dependencies can be installed through the
 package manager:

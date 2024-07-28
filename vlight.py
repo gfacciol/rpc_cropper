@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2013, Gabriele Facciolo <gfacciol@gmail.com>
 
 ## {{{ http://code.activestate.com/recipes/325391/ (r1)
@@ -24,9 +24,9 @@ I1='' # preview
 def loadImage(imageName):
     im = Image.open(imageName)
     try:
-       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tostring("raw", "RGBA", 0, -1)
+       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tobytes("raw", "RGBA", 0, -1)
     except SystemError:
-       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tostring("raw", "RGBX", 0, -1)
+       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tobytes("raw", "RGBX", 0, -1)
     return (image,ix,iy)
 
 
@@ -132,20 +132,21 @@ def mouseButtons(button, state, x,y):
     elif button==GLUT_LEFT_BUTTON and state==GLUT_UP:
        w0,h0 = x-x0,y-y0
        b0state='released'
-       print x0+dx, y0+dy, x+dx, y+dy
+       print( x0+dx, y0+dy, x+dx, y+dy)
 
 
 
 # letters and numbers
 def keyboard(key, x, y):
-    if key=='q':
-       exit(0)
-#    print ord(key)
+    if key==b'q':
+       import os
+       os._exit(0)
+    #print (key, ord(key))
 
 
     # handle spece/backspace
     global I1, cidx
-    if key==' ':      # space
+    if key==b' ':      # space
        cidx = (cidx+1) % len(I1)
     if ord(key)==127: # backspace
        cidx = (cidx-1) % len(I1)
@@ -161,6 +162,7 @@ def keyboard(key, x, y):
 
 # handle arrow keys
 def keyboard2(key, x, y):
+    #print ("special", key)
     global dx,dy
     winx=glutGet(GLUT_WINDOW_WIDTH)
     winy=glutGet(GLUT_WINDOW_HEIGHT)
@@ -172,7 +174,6 @@ def keyboard2(key, x, y):
        dx=dx-int(winx/16)
     elif key==103:
        dy=dy+int(winy/16)
-#    print key
     glutPostRedisplay()
 
 
@@ -186,8 +187,8 @@ def main():
        I1 = sys.argv[1:]
        cidx=0
     else:
-       print "Incorrect syntax, use:"
-       print "  > %s img1 img2 ..." % sys.argv[0]
+       print( "Incorrect syntax, use:")
+       print( "  > %s img1 img2 ..." % sys.argv[0])
        sys.exit(1)
 
     # globals

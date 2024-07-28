@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2013, Gabriele Facciolo <gfacciol@gmail.com>
 
 ## {{{ http://code.activestate.com/recipes/325391/ (r1)
@@ -28,9 +28,9 @@ rpc2=''
 def loadImage(imageName):
     im = Image.open(imageName)
     try:
-       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tostring("raw", "RGBA", 0, -1)
+       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tobytes("raw", "RGBA", 0, -1)
     except SystemError:
-       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tostring("raw", "RGBX", 0, -1)
+       ix, iy, image = im.size[0], im.size[1], im.convert("RGBA").tobytes("raw", "RGBX", 0, -1)
     return (image,ix,iy)
 
 
@@ -136,19 +136,19 @@ def mouseButtons(button, state, x,y):
     elif button==GLUT_LEFT_BUTTON and state==GLUT_UP:
        w0,h0 = x-x0,y-y0
        b0state='released'
-       print x0+dx, y0+dy, x+dx, y+dy
+       print (x0+dx, y0+dy, x+dx, y+dy)
        global I1, img1, img2, img3, rpc1, rpc2, rpc3, out_dir
 
        import common
        # read preview/full images dimensions
-       nc, nr = common.image_size_gdal(img1)
-       nc_preview, nr_preview = common.image_size_gdal(I1)
+       nc, nr = common.image_size(img1)
+       nc_preview, nr_preview = common.image_size(I1)
 
        # rescale according to preview/full ratio
-       x2= int(x0*nc/nc_preview)
-       y2= int(y0*nr/nr_preview)
-       w2= int(w0*nc/nc_preview)
-       h2= int(h0*nr/nr_preview)
+       x2= int(x0*(float(nc)/nc_preview))
+       y2= int(y0*(float(nr)/nr_preview))
+       w2= int(w0*(float(nc)/nc_preview))
+       h2= int(h0*(float(nr)/nr_preview))
        if rpc2 is None:
            os.system('./rpc_crop.py %s "%s" "%s" %d %d %d %d' % (out_dir, img1, rpc1, x2, y2, w2, h2))
        elif rpc3 is None:
@@ -163,8 +163,9 @@ def mouseButtons(button, state, x,y):
 
 # letters and numbers
 def keyboard(key, x, y):
-    if key=='q':
-       exit(0)
+    if key==b'q':
+       import os
+       os._exit(0)
 #    print ord(key)
 
 
@@ -208,8 +209,8 @@ def main():
           img3 = sys.argv[7]
           rpc3 = sys.argv[8]
     else:
-       print "Incorrect syntax, use:"
-       print "  > %s out_dir preview.jpg img1.tif rpc1.xml [img2.tif rpc2.xml [img3.tif rpc3.xml]]" % sys.argv[0]
+       print ("Incorrect syntax, use:")
+       print ("  > %s out_dir preview.jpg img1.tif rpc1.xml [img2.tif rpc2.xml [img3.tif rpc3.xml]]" % sys.argv[0])
        sys.exit(1)
 
     # globals

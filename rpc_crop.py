@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (C) 2013, Carlo de Franchis <carlodef@gmail.com>
 # Copyright (C) 2013, Gabriele Facciolo <gfacciol@gmail.com>
@@ -7,20 +7,13 @@
 import os
 import sys
 
-import rpc_model
+import rpcm
+from rpcm.rpc_file_readers import read_rpc_file
 import rpc_utils
-import srtm
+import srtm4 as srtm
 import common
+import rasterio
 
-
-### Hack build srtm4 on the fly
-here = os.path.dirname(__file__)
-srtm4_binary = os.path.join(here, 'srtm4')
-try:
-   os.stat(srtm4_binary)
-except OSError:
-   print 'BUILDING SRTM4...'
-   os.system('cd %s; make' % here)
 
 
 def procedure1(poly, a11, a22, b1, b2):
@@ -88,58 +81,62 @@ def rpc_apply_crop_to_rpc_model(rpc, x0, y0, w, h):
    import copy
    rpcout = copy.deepcopy(rpc)
 
-   ## compute the scale and shift parameter for the normalized RPC
-   a11 = (float(w)/2) / (rpc.colScale)
-   a22 = (float(h)/2) / (rpc.linScale)
-#   a11 = 1.0
-#   a22 = 1.0
-   b1  = float(x0)/float(rpc.colScale)
-   b2  = float(y0)/float(rpc.linScale)
-   ## apply the transformation to the direct polynomials, BEWARE!! The order of the variables is reversed
-   rpcout.directLonNum, rpcout.directLonDen = poly_variable_change_in(rpc.directLonNum, rpc.directLonDen, a22,a11,b2,b1)
-   rpcout.directLatNum, rpcout.directLatDen = poly_variable_change_in(rpc.directLatNum, rpc.directLatDen, a22,a11,b2,b1)
+   rpcout.col_offset -= x0
+   rpcout.row_offset -= y0
 
+#   ## compute the scale and shift parameter for the normalized RPC
+#   a11 = (float(w)/2) / (rpc.col_scale)
+#   a22 = (float(h)/2) / (rpc.row_scale)
+##   a11 = 1.0
+##   a22 = 1.0
+#   b1  = float(x0)/float(rpc.col_scale)
+#   b2  = float(y0)/float(rpc.row_scale)
+#   ## apply the transformation to the direct polynomials, BEWARE!! The order of the variables is reversed
+#   rpcout.directLonNum, rpcout.directLonDen = poly_variable_change_in(rpc.lon_num, rpc.lon_den, a22,a11,b2,b1)
+#   rpcout.directLatNum, rpcout.directLatDen = poly_variable_change_in(rpc.lat_num, rpc.lat_den, a22,a11,b2,b1)
+#
+#
+#   # scale the RPC domain (I'm not sure its [-1,1]^2)
+#   #   # TODO correct RPC so that the validity domain is still the square [-1,1]^2
+#   rpcout.col_scale= float(w)/2
+#   rpcout.row_scale= float(h)/2
+##   rpcout.col_scale= rpc.col_scale  ## keep it unchanged (it also works)
+##   rpcout.row_scale= rpc.row_scale
+#
 
-   # scale the RPC domain (I'm not sure its [-1,1]^2)
-   #   # TODO correct RPC so that the validity domain is still the square [-1,1]^2
-   rpcout.colScale= float(w)/2
-   rpcout.linScale= float(h)/2
-#   rpcout.colScale= rpc.colScale  ## keep it unchanged (it also works)
-#   rpcout.linScale= rpc.linScale
-
-
-   ## compute the scale and shift parameters for the normalized RPC
-   b1 = float(x0)/float(rpcout.colScale)
-   b2 = float(y0)/float(rpcout.linScale)
-   a11 = float(rpc.colScale)/float(rpcout.colScale)
-   a22 = float(rpc.linScale)/float(rpcout.linScale)
-#   a11 = 1.0
-#   a22 = 1.0
-   ## apply the transform to the inverse polynomials
-   rpcout.inverseColNum, rpcout.inverseColDen  =  poly_variable_change_out(rpcout.inverseColNum, rpcout.inverseColDen, a11, -b1)
-   rpcout.inverseLinNum, rpcout.inverseLinDen  =  poly_variable_change_out(rpcout.inverseLinNum, rpcout.inverseLinDen, a22, -b2)
+#   ## compute the scale and shift parameters for the normalized RPC
+#   b1 = float(x0)/float(rpcout.col_scale)
+#   b2 = float(y0)/float(rpcout.row_scale)
+#   a11 = float(rpc.col_scale)/float(rpcout.col_scale)
+#   a22 = float(rpc.row_scale)/float(rpcout.row_scale)
+##   a11 = 1.0
+##   a22 = 1.0
+#   ## apply the transform to the inverse polynomials
+#   rpcout.inverseColNum, rpcout.inverseColDen  =  poly_variable_change_out(rpcout.col_num, rpcout.col_den, a11, -b1)
+#   rpcout.inverseLinNum, rpcout.inverseLinDen  =  poly_variable_change_out(rpcout.row_num, rpcout.row_den, a22, -b2)
 
    return rpcout
 
 
-def test_me(rpcfile):
-   import numpy as np
-   import rpc_model, rpc_crop
-   reload(rpc_crop)
-   r1 = rpc_model.RPCModel('RPC_PHR1A_P_201309231105136_SEN_756965101-001.XML')
-   r2 = rpc_crop.rpc_apply_crop_to_rpc_model(r1, 10000,20000,2000,2000)
-
-   #print "direct estimate error:"
-   geo1 = np.array(r1.direct_estimate(11000,20100,10, return_normalized=False))
-   geo2 = np.array(r2.direct_estimate(1000,100,10, return_normalized=False))
-   print geo1 - geo2
-
-   #print "inverse estimate error:"
-   pix1 = np.array(r1.inverse_estimate(geo1[0], geo1[1], geo1[2]))
-   pix2 = np.array(r2.inverse_estimate(geo1[0], geo1[1], geo1[2]))
-   print pix1 - pix2
-
-   r2.write('cropped.xml')
+def test_me():
+    import numpy as np
+    import rpcm
+    from rpcm.rpc_file_readers import read_rpc_file
+    import rpc_crop
+    r1 = rpcm.RPCModel(read_rpc_file('RPC_PHR1A_P_201309231105136_SEN_756965101-001.XML'))
+    r2 = rpc_crop.rpc_apply_crop_to_rpc_model(r1, 10000,20000,2000,2000)
+    
+    #print "direct estimate error:"
+    geo1 = np.array(r1.localization(11000,20100,10, return_normalized=False))
+    geo2 = np.array(r2.localization(1000,100,10, return_normalized=False))
+    print (geo1 - geo2)
+    
+    #print "inverse estimate error:"
+    pix1 = np.array(r1.projection(geo1[0], geo1[1], geo1[2]))
+    pix2 = np.array(r2.projection(geo1[0], geo1[1], geo1[2]))
+    print (pix1 - pix2)
+    
+    r2.write_to_file('cropped.xml')
 
 
 def crop_rpc_and_image(out_dir, img, rpc, rpc_ref, x, y, w, h):
@@ -155,12 +152,14 @@ def crop_rpc_and_image(out_dir, img, rpc, rpc_ref, x, y, w, h):
         x, y, w, h: 4 integers defining a rectangular ROI in the reference
             image
     """
-    r = rpc_model.RPCModel(rpc)
+    # get the rpc of the first image
+    r = rpcm.RPCModel(read_rpc_file(rpc))
 
     # recompute the roi if the input image is not the reference image
     if rpc_ref is not rpc:
-        r_ref = rpc_model.RPCModel(rpc_ref)
-        x, y, w, h = rpc_utils.corresponding_roi(r_ref, r, x, y, w, h)
+        r_ref = rpcm.RPCModel(read_rpc_file(rpc_ref))
+        cfg = {'exogenous_dem':None , 'use_srtm':True, 'rpc_alt_range_scale_factor': 1.0, 'exogenous_dem_geoid_mode': False}
+        x, y, w, h = rpc_utils.corresponding_roi(cfg, r_ref, r, x, y, w, h)
 
     # output filenames
     crop_rpc_and_image.counter += 1
@@ -171,24 +170,23 @@ def crop_rpc_and_image(out_dir, img, rpc, rpc_ref, x, y, w, h):
 
     # do the crop
     out_r = rpc_apply_crop_to_rpc_model(r, x, y, w, h)
-    out_r.write(out_rpc_file)
-    common.run('gdal_translate -srcwin %d %d %d %d "%s" "%s"' % (x, y, w, h, img, out_img_file))
+    out_r.write_to_file(out_rpc_file)
 
-    # do the preview: it has to fit a 1366x768 rectangle
-    w = float(w)
-    h = float(h)
-    if w > 1366 or h > 768:
-        if w/h > float(1366) / 768:
-            f = w/1366
-        else:
-            f = h/768
-        tmp = common.tmpfile('.tif')
-        common.image_zoom_gdal(out_img_file, f, tmp, w, h)
-        common.run('gdal_translate -of png -ot Byte -scale %s %s' % (tmp, out_prv_file))
-    else:
-        common.run('gdal_translate -of png -ot Byte -scale %s %s' % (out_img_file, out_prv_file))
-    common.run('rm %s.aux.xml' % out_prv_file)
+    # generate a Geotiff
+    out_tags = out_r.to_geotiff_dict()
+    out_profile = {}
+    with rasterio.open(img, "r") as f:
+        out_img_data = f.read(window=((y, y + h), (x, x + w))).squeeze()
+        out_profile = f.profile
 
+    common.rasterio_write(out_img_file, out_img_data, profile=out_profile)
+
+    # add RPC attributes
+    with rasterio.open(out_img_file, "r+") as f:
+        f.update_tags(ns="RPC", **out_tags)
+
+    # save preview
+    common.rasterio_write(out_prv_file, common.linear_stretching_and_quantization_8bit(out_img_data))
 
 
 def main():
@@ -220,26 +218,23 @@ def main():
            w = float(sys.argv[10])
            h = float(sys.argv[11])
     else:
-       print "Tool to crop an image and its RPC."
-       print "Incorrect syntax, use:"
-       print "  >  %s out_dir img1 rpc1 [img2 rpc2 [img3 rpc3]] x y w h" % sys.argv[0]
+       print ("Tool to crop an image and its RPC.")
+       print ("Incorrect syntax, use:")
+       print ("  >  %s out_dir img1 rpc1 [img2 rpc2 [img3 rpc3]] x y w h" % sys.argv[0])
+       print ("   generates files in the out_dir directory:  img_01.tif  rpc_01.tif [img_02.tif rpc_02.tif ... ] ")
+       print ("   the image files are geotiffs and contain the rpc metadata so can be visualized in qgis")
        exit(1)
 
     try:
        os.stat(img1)
        os.stat(rpc1)
-#       os.stat(img2)
-#       os.stat(rpc2)
+
     except OSError:
        exit(1)
 
     # create output dir
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-
-    # download needed srtm files
-    for s in srtm.list_srtm_tiles(rpc1, x, y, w, h):
-        srtm.get_srtm_tile(s, srtm.cfg['srtm_dir'])
 
     # do the crops
     crop_rpc_and_image.counter = 0 # used to name the output files
@@ -248,10 +243,6 @@ def main():
         crop_rpc_and_image(out_dir, img2, rpc2, rpc1, x, y, w, h)
     if 'img3' in locals() and 'rpc3' in locals():
         crop_rpc_and_image(out_dir, img3, rpc3, rpc1, x, y, w, h)
-
-    # clean tmp files
-    while common.garbage:
-        common.run('rm %s' % common.garbage.pop())
 
 
 if __name__ == '__main__': main()
